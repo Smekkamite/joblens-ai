@@ -1,0 +1,71 @@
+.joblens-root {
+  all: initial;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.joblens-card {
+  width: 360px;
+  background: #0f172a;
+  color: #e5e7eb;
+  border: 1px solid #1e293b;
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+.joblens-card::-webkit-scrollbar {
+  width: 6px;
+}
+
+.joblens-card::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.2);
+  border-radius: 4px;
+}
+
+.joblens-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.joblens-header h1 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.joblens-badge {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #1d4ed8;
+  color: white;
+}
+
+.joblens-section {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 12px;
+  background: #111827;
+  border: 1px solid #1f2937;
+}
+
+.joblens-label {
+  margin: 0 0 6px 0;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #93c5fd;
+}
+
+.joblens-value {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: #e5e7eb;
+}

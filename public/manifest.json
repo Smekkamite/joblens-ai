@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "JobLens AI",
+  "version": "0.1.0",
+  "description": "AI-assisted job filtering extension",
+  "permissions": ["storage"],
+  "host_permissions": ["https://www.linkedin.com/*"],
+  "content_scripts": [
+    {
+      "matches": ["https://www.linkedin.com/*"],
+      "js": ["assets/contentScript.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
