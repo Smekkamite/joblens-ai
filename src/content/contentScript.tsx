@@ -1,12 +1,7 @@
+/// <reference types="chrome" />
 import { extractLinkedInJob } from "./linkedin/linkedinExtractor";
-import { detectSeniority } from "../core/parser/detectSeniority";
-import { detectExperience } from "../core/parser/detectExperience";
-import { detectRedFlags } from "../core/parser/detectRedFlags";
-import { analyzeWorkMode } from "../core/parser/analyzeWorkMode";
-import { detectExperienceFocus } from "../core/parser/detectExperienceFocus";
-import { detectSkills } from "../core/parser/detectSkills";
-import { detectLanguages } from "../core/parser/detectLanguages";
-import { detectEmploymentType } from "../core/parser/detectEmploymentType";
+
+console.log("[JobLens] content script loaded");
 
 const ROOT_ID = "joblens-ai-extension-root";
 const STYLE_ID = "joblens-ai-extension-style";
@@ -33,6 +28,17 @@ function injectStyles() {
       border-radius: 16px;
       padding: 16px;
       box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+      max-height: 85vh;
+      overflow-y: auto;
+    }
+
+    #${ROOT_ID} .joblens-card::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    #${ROOT_ID} .joblens-card::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 4px;
     }
 
     #${ROOT_ID} .joblens-header {
@@ -88,7 +94,7 @@ function injectStyles() {
 }
 
 function escapeHtml(value: string): string {
-  return value
+  return String(value)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
@@ -97,9 +103,7 @@ function escapeHtml(value: string): string {
 }
 
 function injectPanel() {
-  if (document.getElementById(ROOT_ID)) {
-    return;
-  }
+  if (document.getElementById(ROOT_ID)) return;
 
   injectStyles();
 
@@ -107,143 +111,176 @@ function injectPanel() {
   root.id = ROOT_ID;
   document.body.appendChild(root);
 
-  function render() {
-    const job = extractLinkedInJob();
-    const combinedText = `
-  ${job?.title || ""}
-  ${job?.company || ""}
-  ${job?.location || ""}
-  ${job?.description || ""}
-`;
+  root.innerHTML = `
+    <div class="joblens-card">
+      <div class="joblens-header">
+        <h1>JobLens AI</h1>
+        <span class="joblens-badge">LLM</span>
+      </div>
 
-const workAnalysis = job
-  ? analyzeWorkMode(combinedText)
-  : { mode: "unknown", label: "unknown" };
+      <div class="joblens-section">
+        <p class="joblens-label">Status</p>
+        <p class="joblens-value">Waiting for job selection...</p>
+      </div>
+    </div>
+  `;
 
-const workMode = workAnalysis.mode;
-const workModeLabel = workAnalysis.label;
+  let lastSignature = "";
 
-const seniority = job
-  ? detectSeniority(job.title || "", combinedText)
-  : "unknown";
+  async function render() {
+    try {
+      const job = extractLinkedInJob();
+      console.log("[JobLens] extractLinkedInJob result:", job);
 
-const employmentType = job ? detectEmploymentType(combinedText) : "unknown";
-const experience = job ? detectExperience(combinedText) : "unknown";
-const experienceFocus = job
-  ? detectExperienceFocus(combinedText)
-  : [];
-const redFlags = job
-  ? detectRedFlags(combinedText, workMode, experience)
-  : [];
+      if (!job) {
+        console.log("[JobLens] No job found yet, keeping previous UI");
+        return;
+      }
 
-const skills = job ? detectSkills(combinedText) : [];
-const languages = job ? detectLanguages(combinedText) : [];
+      const combinedText = `
+${job?.title || ""}
+${job?.company || ""}
+${job?.location || ""}
+${job?.description || ""}
+`.trim();
 
-    console.log("[JobLens DEBUG]", {
-      url: window.location.href,
-      jobResult: job,
-    });
+      console.log("[JobLens] combinedText length:", combinedText.length);
 
-    if (!job) {
+      if (!combinedText) return;
+
+      const signature = combinedText.slice(0, 500);
+      if (signature === lastSignature) {
+        console.log("[JobLens] Same job, skipping re-render");
+        return;
+      }
+      lastSignature = signature;
+
       root.innerHTML = `
         <div class="joblens-card">
           <div class="joblens-header">
             <h1>JobLens AI</h1>
-            <span class="joblens-badge">MVP</span>
+            <span class="joblens-badge">LLM</span>
           </div>
 
           <div class="joblens-section">
-  <p class="joblens-label">Employment Type</p>
-  <p class="joblens-value">${employmentType}</p>
-</div>
+            <p class="joblens-label">Status</p>
+            <p class="joblens-value">Analyzing...</p>
+          </div>
         </div>
       `;
-      return;
+
+      const llmResult = await new Promise<any>((resolve) => {
+        chrome.runtime.sendMessage(
+          {
+            type: "ANALYZE_JOB",
+            jobText: combinedText,
+          },
+          (response: any) => {
+            if (chrome.runtime.lastError) {
+              console.error("[JobLens] runtime error:", chrome.runtime.lastError);
+              resolve(null);
+              return;
+            }
+
+            if (!response?.ok) {
+              console.error("[JobLens] background analyze failed:", response?.error);
+              resolve(null);
+              return;
+            }
+
+            resolve(response.data);
+          }
+        );
+      });
+
+      console.log("[JobLens] LLM RESULT:", llmResult);
+
+      const llmRole = llmResult?.role || job.title || "N/A";
+      const llmRemote = llmResult?.remote || "N/A";
+      const llmExperience = llmResult?.experience_years || "N/A";
+      const llmSalary = llmResult?.salary || "N/A";
+      const llmTechStack =
+        llmResult?.tech_stack && llmResult.tech_stack.length > 0
+          ? llmResult.tech_stack.join(" • ")
+          : "N/A";
+      const llmVerdict = llmResult?.verdict || "N/A";
+      const llmRedFlags =
+        llmResult?.red_flags && llmResult.red_flags.length > 0
+          ? llmResult.red_flags.join(" • ")
+          : "None";
+
+      root.innerHTML = `
+        <div class="joblens-card">
+          <div class="joblens-header">
+            <h1>JobLens AI</h1>
+            <span class="joblens-badge">LLM</span>
+          </div>
+
+          <div class="joblens-section">
+            <p class="joblens-label">Title</p>
+            <p class="joblens-value">${escapeHtml(job.title || "N/A")}</p>
+          </div>
+
+          <div class="joblens-section">
+            <p class="joblens-label">Company</p>
+            <p class="joblens-value">${escapeHtml(job.company || "N/A")}</p>
+          </div>
+
+          <div class="joblens-section">
+            <p class="joblens-label">Location</p>
+            <p class="joblens-value">${escapeHtml(job.location || "N/A")}</p>
+          </div>
+
+          <div class="joblens-section">
+            <p class="joblens-label">Role</p>
+            <p class="joblens-value">${escapeHtml(llmRole)}</p>
+          </div>
+
+          <div class="joblens-section">
+            <p class="joblens-label">Work Mode</p>
+            <p class="joblens-value">${escapeHtml(llmRemote)}</p>
+          </div>
+
+          <div class="joblens-section">
+            <p class="joblens-label">Experience</p>
+            <p class="joblens-value">${escapeHtml(llmExperience)}</p>
+          </div>
+
+          <div class="joblens-section">
+            <p class="joblens-label">Salary</p>
+            <p class="joblens-value">${escapeHtml(llmSalary)}</p>
+          </div>
+
+          <div class="joblens-section">
+            <p class="joblens-label">Tech Stack</p>
+            <p class="joblens-value">${escapeHtml(llmTechStack)}</p>
+          </div>
+
+          <div class="joblens-section">
+            <p class="joblens-label">Verdict</p>
+            <p class="joblens-value">${escapeHtml(llmVerdict)}</p>
+          </div>
+
+          <div class="joblens-section">
+            <p class="joblens-label">Red Flags</p>
+            <p class="joblens-value">${escapeHtml(llmRedFlags)}</p>
+          </div>
+        </div>
+      `;
+    } catch (error) {
+      console.error("[JobLens] render error:", error);
     }
-
-    root.innerHTML = `
-  <div class="joblens-card">
-    <div class="joblens-header">
-      <h1>JobLens AI</h1>
-      <span class="joblens-badge">LIVE</span>
-    </div>
-
-    <div class="joblens-section">
-      <p class="joblens-label">Title</p>
-      <p class="joblens-value">${escapeHtml(job.title || "N/A")}</p>
-    </div>
-
-    <div class="joblens-section">
-      <p class="joblens-label">Company</p>
-      <p class="joblens-value">${escapeHtml(job.company || "N/A")}</p>
-    </div>
-
-    <div class="joblens-section">
-      <p class="joblens-label">Location</p>
-      <p class="joblens-value">${escapeHtml(job.location || "N/A")}</p>
-    </div>
-
-    <div class="joblens-section">
-  <p class="joblens-label">Work Mode</p>
-  <p class="joblens-value">${workModeLabel}</p>
-</div>
-
-    <div class="joblens-section">
-      <p class="joblens-label">Seniority</p>
-      <p class="joblens-value">${seniority}</p>
-    </div>
-
-    <div class="joblens-section">
-      <p class="joblens-label">Experience</p>
-      <p class="joblens-value">
-  ${
-    experienceFocus.length > 0
-      ? `${experience} • ${experienceFocus.join(" • ")}`
-      : experience
-  }
-</p>
-    </div>
-
-    <div class="joblens-section">
-  <p class="joblens-label">Skills</p>
-  <p class="joblens-value">
-    ${skills.length > 0 ? skills.join(" • ") : "None"}
-  </p>
-</div>
-<div class="joblens-section">
-  <p class="joblens-label">Languages</p>
-  <p class="joblens-value">
-    ${languages.length > 0 ? languages.join(" • ") : "None"}
-  </p>
-</div>
-
-  <div class="joblens-section">
-  <p class="joblens-label">Fit Constraints</p>
-  <p class="joblens-value">
-  ${redFlags.length > 0
-    ? redFlags.join(" • ")
-    : "None"}
-</p>
-</div>
-
-</div>
-`;
   }
 
-  render();
+  void render();
 
   let renderTimeout: number | undefined;
 
-  const observer = new MutationObserver(() => {
+  document.addEventListener("click", () => {
     window.clearTimeout(renderTimeout);
     renderTimeout = window.setTimeout(() => {
-      render();
-    }, 250);
-  });
-
-  observer.observe(document.body, {
-    childList: true,
-    subtree: true,
+      void render();
+    }, 700);
   });
 }
 

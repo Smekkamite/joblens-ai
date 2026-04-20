@@ -8,15 +8,15 @@ export default defineConfig({
   build: {
     rollupOptions: {
       input: {
-        app: resolve(__dirname, "index.html"),
-        contentScript: resolve(__dirname, "src/content/contentScript.tsx"),
-      },
+  app: resolve(__dirname, "index.html"),
+  contentScript: resolve(__dirname, "src/content/contentScript.tsx"),
+  background: resolve(__dirname, "src/background/background.ts"),
+},
       output: {
-        entryFileNames: "assets/[name].js",
-        chunkFileNames: "assets/[name].js",
-        assetFileNames: "assets/[name].[ext]",
-        inlineDynamicImports: false,
-      },
+  entryFileNames: "assets/[name].js",
+  chunkFileNames: "assets/[name].js",
+  assetFileNames: "assets/[name].[ext]"
+},
     },
   },
 });
