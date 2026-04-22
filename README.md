@@ -86,6 +86,25 @@ UI Injection
 - llama3.1:8b
 
 ---
+## 📸 Preview
+
+## 📸 Preview
+
+### Job Analysis (core feature)
+<p align="center">
+  <img src="screenshots/dash2.png" width="65%" />
+</p>
+
+### Settings (personalization engine)
+<p align="center">
+  <img src="screenshots/settings.png" width="65%" />
+</p>
+
+### UI Overview
+<p align="center">
+  <img src="screenshots/dash1.png" width="45%" />
+  <img src="screenshots/dash3.png" width="45%" />
+</p>
 
 ## 📦 Installation
 
@@ -122,13 +141,3 @@ Better salary detection
 Improved role classification
 Smart job clustering
 Auto-apply assistant (future)
-
-
-## 📸 Preview
-
-<p align="center">
-  <img src="screenshots/dash1.png" width="30%" />
-  <img src="screenshots/dash2.png" width="30%" />
-  <img src="screenshots/dash3.png" width="30%" />
-  <img src="screenshots/settings.png" width="30%" />
-</p>
