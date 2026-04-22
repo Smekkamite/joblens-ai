@@ -3,6 +3,7 @@ export type RawJobData = {
   company: string;
   location: string;
   description: string;
+  metadata: string[];
 };
 
 const EXT_ROOT_ID = "joblens-ai-extension-root";
@@ -16,109 +17,143 @@ function cleanText(value: string | null | undefined): string {
   return (value || "").replace(/\s+/g, " ").trim();
 }
 
-function getFirstText(selectors: string[]): string {
+function getCurrentJobPanel(): Element | null {
+  const selectors = [
+    ".jobs-search__job-details--container",
+    ".jobs-details",
+    ".job-view-layout",
+    ".scaffold-layout__detail",
+    ".jobs-unified-top-card",
+    "main",
+  ];
+
   for (const selector of selectors) {
-    const elements = Array.from(document.querySelectorAll(selector));
+    const el = document.querySelector(selector);
+    if (el && !isInsideExtension(el)) {
+      return el;
+    }
+  }
 
-    for (const el of elements) {
-      if (isInsideExtension(el)) continue;
+  return null;
+}
 
+function getTextFromWithin(root: ParentNode, selectors: string[]): string {
+  for (const selector of selectors) {
+    const el = root.querySelector(selector);
+    if (el && !isInsideExtension(el)) {
       const text = cleanText(el.textContent);
       if (text) return text;
     }
   }
-
   return "";
 }
 
-function getDescriptionText(): string {
-  const selectors = [
-    ".jobs-description__content",
-    ".jobs-box__html-content",
-    ".jobs-description-content__text",
-    ".jobs-search__right-rail",
-    ".job-details-module",
-    "main"
-  ];
+function getAllTextsFromWithin(root: ParentNode, selectors: string[]): string[] {
+  const out: string[] = [];
 
   for (const selector of selectors) {
-    const elements = Array.from(document.querySelectorAll(selector));
-
+    const elements = Array.from(root.querySelectorAll(selector));
     for (const el of elements) {
       if (isInsideExtension(el)) continue;
-
       const text = cleanText(el.textContent);
       if (!text) continue;
+      out.push(text);
+    }
+  }
 
+  return Array.from(new Set(out));
+}
+
+function getTitle(root: ParentNode): string {
+  return getTextFromWithin(root, [
+    ".job-details-jobs-unified-top-card__job-title h1",
+    ".jobs-unified-top-card__job-title h1",
+    "h1",
+  ]);
+}
+
+function getCompany(root: ParentNode): string {
+  return getTextFromWithin(root, [
+    ".job-details-jobs-unified-top-card__company-name a",
+    ".jobs-unified-top-card__company-name a",
+    ".job-details-jobs-unified-top-card__company-name",
+    ".jobs-unified-top-card__company-name",
+  ]);
+}
+
+function getLocation(root: ParentNode): string {
+  const candidates = getAllTextsFromWithin(root, [
+    ".job-details-jobs-unified-top-card__primary-description-container",
+    ".jobs-unified-top-card__primary-description-container",
+    ".job-details-jobs-unified-top-card__bullet",
+    ".jobs-unified-top-card__bullet",
+  ]);
+
+  for (const text of candidates) {
+    const parts = text.split("·").map((x) => cleanText(x));
+    for (const part of parts) {
       if (
-        text.includes("About the job") ||
-        text.includes("Description") ||
-        text.includes("Key job responsibilities") ||
-        text.includes("Minimum qualifications")
+        /remote|hybrid|on-site|onsite|in sede|presenza/i.test(part) ||
+        /applicants|responses|reviewing|promoted|save|easy apply/i.test(part)
       ) {
-        return text;
+        continue;
       }
+
+      if (part.includes(",")) return part;
     }
   }
 
   return "";
 }
 
-function getTitle(): string {
-  return getFirstText([
-    ".job-details-jobs-unified-top-card__job-title h1",
-    ".jobs-unified-top-card__job-title h1",
-    ".jobs-search__right-rail h1",
-    ".jobs-details h1",
-    "main h1"
+function getMetadata(root: ParentNode): string[] {
+  const raw = getAllTextsFromWithin(root, [
+    ".job-details-jobs-unified-top-card__job-insight",
+    ".jobs-unified-top-card__job-insight",
+    ".job-details-jobs-unified-top-card__workplace-type",
+    ".jobs-unified-top-card__workplace-type",
+    ".artdeco-pill",
+    ".job-details-preferences-and-skills__pill",
   ]);
+
+  return raw.filter((text) => {
+    const lower = text.toLowerCase();
+    return !(
+      lower.includes("easy apply") ||
+      lower.includes("save") ||
+      lower.includes("message") ||
+      lower.includes("premium") ||
+      lower.includes("try premium")
+    );
+  });
 }
 
-function getCompany(): string {
-  return getFirstText([
-    ".job-details-jobs-unified-top-card__company-name a",
-    ".jobs-unified-top-card__company-name a",
-    ".job-details-jobs-unified-top-card__company-name",
-    ".jobs-unified-top-card__company-name",
-    ".jobs-search__right-rail a[href*='/company/']",
-    "main a[href*='/company/']"
-  ]);
-}
-
-function getLocation(): string {
+function getDescriptionText(root: ParentNode): string {
   const selectors = [
-    ".job-details-jobs-unified-top-card__primary-description-container",
-    ".jobs-unified-top-card__primary-description-container",
-    ".job-details-jobs-unified-top-card__bullet",
-    ".jobs-unified-top-card__bullet",
-    ".jobs-search__right-rail",
-    "main"
+    ".jobs-description__content",
+    ".jobs-box__html-content",
+    ".jobs-description-content__text",
+    ".job-details-module",
+    ".jobs-description",
   ];
 
   for (const selector of selectors) {
-    const elements = Array.from(document.querySelectorAll(selector));
+    const el = root.querySelector(selector);
+    if (!el || isInsideExtension(el)) continue;
 
-    for (const el of elements) {
-      if (isInsideExtension(el)) continue;
+    const text = cleanText(el.textContent);
+    if (!text) continue;
 
-      const text = cleanText(el.textContent);
-      if (!text) continue;
-
-      const locationMatch = text.match(
-        /\b([A-Z][a-z]+(?:\s[A-Z][a-z]+)*,\s?[A-Z][a-z]+(?:\s[A-Z][a-z]+)*,\s?[A-Z][a-z]+)\b/
-      );
-
-      if (locationMatch?.[1]) {
-        return locationMatch[1];
-      }
-
-      const shortMatch = text.match(
-        /\b([A-Z][a-z]+(?:\s[A-Z][a-z]+)*,\s?[A-Z][a-z]+(?:\s[A-Z][a-z]+)*)\b/
-      );
-
-      if (shortMatch?.[1]) {
-        return shortMatch[1];
-      }
+    if (
+      text.includes("About the job") ||
+      text.includes("Descrizione") ||
+      text.includes("Description") ||
+      text.includes("Responsabilità") ||
+      text.includes("Requirements") ||
+      text.includes("Competenze Richieste") ||
+      text.includes("Cosa offriamo")
+    ) {
+      return text;
     }
   }
 
@@ -130,30 +165,32 @@ export function extractLinkedInJob(): RawJobData | null {
     window.location.href.includes("/jobs/") ||
     window.location.href.includes("currentJobId=");
 
-  if (!isJobsPage) {
-    return null;
-  }
+  if (!isJobsPage) return null;
 
-  const title = getTitle();
-  const company = getCompany();
-  const location = getLocation();
-  const description = getDescriptionText();
+  const root = getCurrentJobPanel();
+  if (!root) return null;
+
+  const title = getTitle(root);
+  const company = getCompany(root);
+  const location = getLocation(root);
+  const metadata = getMetadata(root);
+  const description = getDescriptionText(root);
 
   const looksLikeJob =
     !!title ||
     !!description ||
-    document.body.innerText.includes("About the job") ||
-    document.body.innerText.includes("Apply") ||
-    document.body.innerText.includes("Save");
+    root.textContent?.includes("About the job") ||
+    root.textContent?.includes("Descrizione") ||
+    root.textContent?.includes("Requirements") ||
+    root.textContent?.includes("Competenze Richieste");
 
-  if (!looksLikeJob) {
-    return null;
-  }
+  if (!looksLikeJob) return null;
 
   return {
     title,
     company,
     location,
     description,
+    metadata,
   };
 }
