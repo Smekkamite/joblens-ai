@@ -1,82 +1,134 @@
 # JobLens AI
 
-**Stop wasting time reading job postings. Let AI do it for you.**
+JobLens AI is a Chrome extension that analyzes job postings in real-time and tells you whether you should apply, skip, or consider them.
 
-JobLens is a Chrome extension that analyzes job postings in real-time and extracts structured insights using a local LLM (Ollama). Read once, understand everything.
+It uses a local LLM (via Ollama) combined with a deterministic filtering system based on your personal preferences.
 
-## What It Does
+---
 
-Open a job posting on LinkedIn. JobLens injects a side panel that instantly shows:
+## 🚀 Features
 
-- **Role** — What you'd actually be doing
-- **Work Mode** — Remote / Hybrid / Onsite
-- **Experience Level** — Years required (and if it's realistic)
-- **Salary** — If posted
-- **Tech Stack** — Languages, frameworks, tools
-- **Verdict** — Is this a good fit? (Based on your criteria)
-- **Red Flags** — Unrealistic requirements, salary mismatches, etc.
+- 🔍 Automatic job extraction from LinkedIn
+- 🧠 LLM-powered job analysis (Ollama - llama3.1:8b)
+- ⚖️ Smart recommendation system:
+  - APPLY
+  - BORDERLINE
+  - SKIP
+- 🎯 Personalized filtering system (your preferences)
+- ⚡ Real-time UI injected directly into job pages
+- 🔧 Fully local (no API costs)
 
-No more reading 500-word job descriptions. Just the facts.
+---
 
-## How It Works
+## 🧠 How It Works
 
-1. Open a job posting on LinkedIn
-2. JobLens extracts the job description
-3. Local LLM (Ollama + llama3.1:8b) analyzes it
-4. Structured insights appear in the side panel
-5. You decide in seconds if it's worth applying
+1. The extension extracts the job description from LinkedIn
+2. Sends it to a local LLM (Ollama)
+3. Receives structured JSON
+4. Applies deterministic logic:
+   - experience filtering
+   - remote/hybrid/onsite rules
+   - personal preferences
+5. Outputs:
+   - recommendation
+   - red flags
+   - fit analysis
 
-Everything runs **locally** — your data never leaves your computer.
+---
 
-## Tech Stack
+## ⚙️ Personalization (Core Feature)
 
-- **Frontend:** TypeScript, React, Chrome Extension (Manifest V3)
-- **AI:** Ollama + llama3.1:8b (local LLM)
-- **Architecture:** Service Worker bridge for background processing
+You can configure your job preferences directly in the UI:
 
-## Current Status
+### Preferences:
+- Preferred roles (e.g. cloud support, helpdesk)
+- Preferred technologies (Azure, AD, etc.)
+- Required languages
+- Max years of experience
+- Minimum salary (WIP)
 
-✅ **MVP Working**
+### Filters:
+- Remote only
+- Allow hybrid
+- Allow onsite
+- Avoid travel
+- Avoid on-call
 
-Fully implemented:
-- LinkedIn job extraction
-- Chrome extension side panel UI
-- Ollama integration via background service worker
-- AI-powered job analysis with structured JSON output
-- Real-time rendering in the UI
+### Result:
+Each job is evaluated **based on YOUR profile**, not generic rules.
 
-In progress:
-- Salary extraction accuracy
-- Work mode detection refinement
-- Prompt engineering optimization
-- LinkedIn parsing stability improvements
+---
 
-## Screenshot
+## 🧩 Architecture
 
-![JobLens AI panel](./screenshots/joblens-llm-panel.png)
 
-## Why I Built This
+LinkedIn Page
+↓
+Content Script (job extraction)
+↓
+Background Script
+↓
+Ollama (LLM - local)
+↓
+Normalization + Enrichment
+↓
+UI Injection
 
-I was drowning in job applications, wasting hours reading generic postings that didn't match my skills or timeline. I built JobLens to filter the noise and get clarity fast.
 
-**The result?** Spend less time reading, more time applying to roles that actually fit.
+---
 
-## Installation
+## 🛠️ Tech Stack
 
-1. Clone the repo
-2. Install dependencies: `npm install`
-3. Build: `npm run build`
-4. Load in Chrome: `chrome://extensions` → "Load unpacked" → select the `dist` folder
-5. Ensure Ollama is running locally with `llama3.1:8b` model
+- TypeScript
+- Vite
+- Chrome Extension API
+- Ollama (local LLM)
+- llama3.1:8b
 
-## Next Steps
+---
 
-- [ ] Improve salary extraction accuracy
-- [ ] Refine work mode detection
-- [ ] Add visual verdict highlighting
-- [ ] Expand to Indeed, RemoteOK, other job boards
-- [ ] Add user preferences for filtering criteria
+## 📦 Installation
 
-## License
+### 1. Clone repo
+```bash
+git clone https://github.com/Smekkamite/joblens-ai.git
+cd joblens-ai
+2. Install dependencies
+npm install
+3. Build
+npm run build
+4. Load extension
+Go to chrome://extensions/
+Enable Developer mode
+Click Load unpacked
+Select the dist/ folder
+🤖 Ollama Setup
 
-MIT
+Install Ollama and run:
+
+ollama run llama3.1:8b
+
+Ensure API is available at:
+
+http://localhost:11434
+⚠️ Current Limitations
+LLM extraction can sometimes misinterpret roles
+Salary parsing is basic
+No CV integration yet (planned)
+LinkedIn DOM changes can break extraction
+🔥 Roadmap
+CV upload → automatic profile generation
+Better salary detection
+Improved role classification
+Smart job clustering
+Auto-apply assistant (future)
+
+
+## 📸 Preview
+
+<p align="center">
+  <img src="screenshots/dash1.png" width="30%" />
+  <img src="screenshots/dash2.png" width="30%" />
+  <img src="screenshots/dash3.png" width="30%" />
+  <img src="screenshots/settings.png" width="30%" />
+</p>
