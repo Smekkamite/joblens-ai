@@ -1,4 +1,4 @@
-ì# JobLens AI
+# JobLens AI
 
 **Decide in seconds if a job is worth applying.**
 
