@@ -179,6 +179,28 @@ function dedupe(items: string[]): string[] {
   return out;
 }
 
+function cleanRedFlags(flags: string[]): string[] {
+  const map = new Map<string, string>();
+
+  for (const f of flags) {
+    const key = f.toLowerCase();
+
+    if (key.includes("onsite")) {
+      map.set("onsite", "Onsite role");
+    } else if (key.includes("hybrid")) {
+      map.set("hybrid", "Hybrid role");
+    } else if (key.includes("years")) {
+      map.set("years", f);
+    } else if (key.includes("salary")) {
+      map.set("salary", "No salary provided");
+    } else {
+      map.set(key, f);
+    }
+  }
+
+  return Array.from(map.values());
+}
+
 function normalizeExperience(value: string): string {
   const v = value.trim();
   if (!v) return "";
@@ -235,20 +257,20 @@ function enrichAnalysis(data: any, settings: any) {
   const tech = data.tech_stack as string[];
 
   const preferredRoles = (settings?.preferredRoles || []).map((x: string) =>
-  x.toLowerCase()
-);
-const preferredTechnologies = (settings?.preferredTechnologies || []).map((x: string) =>
-  x.toLowerCase()
-);
-const requiredLanguages = (settings?.requiredLanguages || []).map((x: string) =>
-  x.toLowerCase()
-);
+    x.toLowerCase()
+  );
+  const preferredTechnologies = (settings?.preferredTechnologies || []).map(
+    (x: string) => x.toLowerCase()
+  );
+  const requiredLanguages = (settings?.requiredLanguages || []).map(
+    (x: string) => x.toLowerCase()
+  );
 
-const normalizedRole = String(data.normalized_role || "").toLowerCase();
-const techLower = tech.map((x: string) => x.toLowerCase());
-const languagesLower = (data.languages_required || []).map((x: string) =>
-  String(x).toLowerCase()
-);
+  const normalizedRole = String(data.normalized_role || "").toLowerCase();
+  const techLower = tech.map((x: string) => x.toLowerCase());
+  const languagesLower = (data.languages_required || []).map((x: string) =>
+    String(x).toLowerCase()
+  );
 
   let experience = data.experience_required;
   if (!experience) {
@@ -269,55 +291,61 @@ const languagesLower = (data.languages_required || []).map((x: string) =>
   }
 
   if (settings?.remoteOnly && data.work_mode !== "remote") {
-  red_flags.push("Does not match remote-only preference");
-  why_not_fit.push("Does not match remote-only preference");
-}
+    red_flags.push("Does not match remote-only preference");
+    why_not_fit.push("Does not match remote-only preference");
+  }
 
-if (!settings?.allowHybrid && data.work_mode === "hybrid") {
-  red_flags.push("Hybrid not allowed by your settings");
-  why_not_fit.push("Hybrid not allowed by your settings");
-}
+  if (!settings?.allowHybrid && data.work_mode === "hybrid") {
+    red_flags.push("Hybrid not allowed by your settings");
+    why_not_fit.push("Hybrid not allowed by your settings");
+  }
 
-if (!settings?.allowOnsite && data.work_mode === "onsite") {
-  red_flags.push("Onsite not allowed by your settings");
-  why_not_fit.push("Onsite not allowed by your settings");
-}
+  if (!settings?.allowOnsite && data.work_mode === "onsite") {
+    red_flags.push("Onsite not allowed by your settings");
+    why_not_fit.push("Onsite not allowed by your settings");
+  }
 
   if (data.travel_required) {
     red_flags.push("Travel required");
     why_not_fit.push("Travel required");
   }
-  
-if (settings?.avoidTravel && data.travel_required) {
-  red_flags.push("Travel conflicts with your settings");
-  why_not_fit.push("Travel conflicts with your settings");
-}
+
+  if (settings?.avoidTravel && data.travel_required) {
+    red_flags.push("Travel conflicts with your settings");
+    why_not_fit.push("Travel conflicts with your settings");
+  }
 
   if (data.on_call) {
     red_flags.push("On-call or shift work");
     why_not_fit.push("On-call or shift work");
   }
 
-if (settings?.avoidOnCall && data.on_call) {
-  red_flags.push("On-call conflicts with your settings");
-  why_not_fit.push("On-call conflicts with your settings");
-}
+  if (settings?.avoidOnCall && data.on_call) {
+    red_flags.push("On-call conflicts with your settings");
+    why_not_fit.push("On-call conflicts with your settings");
+  }
 
   if (years >= 3) {
     red_flags.push(`${years}+ years required`);
     why_not_fit.push(`${years}+ years of experience required`);
   } else if (years > 0 && years <= 2) {
-    why_fit.push(`Experience requirement is manageable (${data.experience_required})`);
+    why_fit.push(
+      `Experience requirement is manageable (${data.experience_required})`
+    );
   }
 
-if (
-  typeof settings?.maxYearsRequired === "number" &&
-  settings.maxYearsRequired > 0 &&
-  years > settings.maxYearsRequired
-) {
-  red_flags.push(`Exceeds your max experience preference (${settings.maxYearsRequired})`);
-  why_not_fit.push(`Exceeds your max experience preference (${settings.maxYearsRequired})`);
-}
+  if (
+    typeof settings?.maxYearsRequired === "number" &&
+    settings.maxYearsRequired > 0 &&
+    years > settings.maxYearsRequired
+  ) {
+    red_flags.push(
+      `Exceeds your max experience preference (${settings.maxYearsRequired})`
+    );
+    why_not_fit.push(
+      `Exceeds your max experience preference (${settings.maxYearsRequired})`
+    );
+  }
 
   if (data.seniority === "junior") {
     why_fit.push("Explicitly junior / entry-level");
@@ -393,29 +421,29 @@ if (
     why_fit.push("Relevant infrastructure / technical overlap");
   }
 
-if (
-  preferredRoles.length > 0 &&
-  preferredRoles.some((role: string) => normalizedRole.includes(role))
-) {
-  why_fit.push("Matches your preferred role direction");
-}
+  if (
+    preferredRoles.length > 0 &&
+    preferredRoles.some((role: string) => normalizedRole.includes(role))
+  ) {
+    why_fit.push("Matches your preferred role direction");
+  }
 
-if (
-  preferredTechnologies.length > 0 &&
-  preferredTechnologies.some((pref: string) =>
-    techLower.some((item: string) => item.includes(pref))
-  )
-) {
-  why_fit.push("Matches your preferred technology stack");
-}
+  if (
+    preferredTechnologies.length > 0 &&
+    preferredTechnologies.some((pref: string) =>
+      techLower.some((item: string) => item.includes(pref))
+    )
+  ) {
+    why_fit.push("Matches your preferred technology stack");
+  }
 
-if (
-  requiredLanguages.length > 0 &&
-  languagesLower.length > 0 &&
-  requiredLanguages.every((lang: string) => languagesLower.includes(lang))
-) {
-  why_fit.push("Matches your language preferences");
-}
+  if (
+    requiredLanguages.length > 0 &&
+    languagesLower.length > 0 &&
+    requiredLanguages.every((lang: string) => languagesLower.includes(lang))
+  ) {
+    why_fit.push("Matches your language preferences");
+  }
 
   if (data.seniority === "mid" || data.seniority === "senior") {
     why_not_fit.push("Experience level higher than entry");
@@ -449,7 +477,7 @@ if (
     ].includes(x)
   ).length;
 
-   const personalBlockers = red_flags.filter((x) =>
+  const personalBlockers = red_flags.filter((x) =>
     [
       "Does not match remote-only preference",
       "Hybrid not allowed by your settings",
@@ -459,7 +487,7 @@ if (
     ].includes(x)
   ).length;
 
-    const hardGapSignals =
+  const hardGapSignals =
     (data.seniority === "mid" ? 1 : 0) +
     (years > (settings?.maxYearsRequired ?? 2) ? 1 : 0) +
     (hasAny(tech, ["kubernetes", "aks", "azure devops", "ci/cd"]) ? 1 : 0) +
@@ -493,7 +521,7 @@ if (
     experience_required: experience,
     why_fit: dedupe(why_fit).slice(0, 4),
     why_not_fit: dedupe(why_not_fit).slice(0, 4),
-    red_flags: dedupe(red_flags).slice(0, 6),
+    red_flags: cleanRedFlags(red_flags).slice(0, 4),
     apply_recommendation,
   };
 }
